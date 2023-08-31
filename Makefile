@@ -87,7 +87,7 @@ sample_request:
 	curl -v -H "content-type: application/json" -H "Authorization: PSK xwKhCUzgJ8" -d "@examples/payload.json" http://localhost:8000/internal/dispatch
 
 sample_request_v2:
-	curl -v -H "content-type: application/json" -H "Authorization: PSK xwKhCUzgJ8" -d "@examples/payload-v2.json" http://localhost:8000/internal/v2/dispatch
+	curl -v -H "content-type: application/json" -H "Authorization: PSK remediations" -d "@examples/payload-v2.json" http://localhost:8000/internal/v2/dispatch
 
 sample_request_multiple_v2:
 	curl -v -H "content-type: application/json" -H "Authorization: PSK xwKhCUzgJ8" -d "@examples/payload-multiple-run-v2.json" http://localhost:8000/internal/v2/dispatch

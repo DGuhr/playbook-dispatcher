@@ -6,6 +6,8 @@ version: "3"
 services:
   spicedb:
     image: "authzed/spicedb"
+    volumes:
+      - "./authz_external/spicedb_bootstrap.yaml:/mnt/spicedb_bootstrap.yaml"
     command: "serve"
     restart: "always"
     ports:
@@ -13,6 +15,8 @@ services:
       - "9090:9090"
       - "50051:50051"
     environment:
+      - "SPICEDB_DATASTORE_BOOTSTRAP_FILES=/mnt/spicedb_bootstrap.yaml"
+      - "SPICEDB_DATASTORE_BOOTSTRAP_OVERWRITE=true"
       - "SPICEDB_GRPC_PRESHARED_KEY=foobar"
       - "SPICEDB_DATASTORE_ENGINE=postgres"
       - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5433/spicedb?sslmode=disable"
@@ -28,6 +32,21 @@ services:
       - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5433/spicedb?sslmode=disable"
     depends_on:
       - "database"
+
+  event_handler:
+    build:
+      context: ./authz_external/event_handler
+    environment:
+      - KAFKA_URL=kafka:29092
+      - KAFKA_TOPIC=platform.playbook-dispatcher.runs
+      - SPICEDB_URL=spicedb:50051
+      - SPICEDB_PSK=foobar
+    links:
+      - spicedb
+      - kafka
+    depends_on:
+      - kafka
+    restart: "always"
 
   database:
     image: "postgres"
@@ -47,6 +66,7 @@ services:
     links:
     - kafka
     - db
+    - spicedb
     ports:
       - '8000:8000'
       - '9001:9001'
@@ -58,6 +78,7 @@ services:
       CLOWDER_ENABLED: "false"
       DB_HOST: "db"
       PSK_AUTH_TEST: "xwKhCUzgJ8"
+      PSK_AUTH_REMEDIATIONS: "remediations"
     restart: unless-stopped
 
   zookeeper:
