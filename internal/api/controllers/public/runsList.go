@@ -44,6 +44,12 @@ func mapFieldsToSql(field string) string {
 	return field
 }
 
+func (this *spiceDBControllers) ApiRunsList(ctx echo.Context, params ApiRunsListParams) error {
+	// TODO: impl
+
+	return nil
+}
+
 func (this *controllers) ApiRunsList(ctx echo.Context, params ApiRunsListParams) error {
 	var dbRuns []dbModel.Run
 

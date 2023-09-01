@@ -3,6 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"playbook-dispatcher/internal/api/connectors"
 	"playbook-dispatcher/internal/api/connectors/inventory"
@@ -49,6 +53,8 @@ func Start(
 	log := utils.GetLogFromContext(ctx)
 	instrumentation.Start()
 	db, sql := db.Connect(ctx, cfg)
+
+	// TODO: spiceDbClient, err := getSpiceDbClient(cfg)
 
 	ready.Register(sql.Ping)
 	live.Register(sql.Ping)
@@ -136,6 +142,8 @@ func Start(
 	internal.POST("/v2/connection_status", privateController.ApiInternalHighlevelConnectionStatus)
 
 	publicController := public.CreateController(db, cloudConnectorClient)
+	// TODO: Wire in spiceDBController in place of above public controller when the code is done
+	// publicController := public.CreateSpiceDBController(spiceDbClient, db, cloudConnectorClient)
 	public := server.Group("/api/playbook-dispatcher")
 	public.Use(echo.WrapMiddleware(identity.EnforceIdentity))
 	public.Use(echo.WrapMiddleware(middleware.EnforceIdentityType))
@@ -170,4 +178,22 @@ func Start(
 			sqlConnection.Close()
 		}
 	}()
+}
+
+func getSpiceDbClient(cfg *viper.Viper) (*authzed.Client, error) {
+	// TODO: wire up below to real viper properties and add viper config
+	endpoint := cfg.GetString("SPICEDB_URL")
+	presharedKey := cfg.GetString("SPICEDB_PSK")
+
+	var opts []grpc.DialOption
+
+	opts = append(opts, grpc.WithBlock())
+
+	opts = append(opts, grpcutil.WithInsecureBearerToken(presharedKey))
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return authzed.NewClient(
+		endpoint,
+		opts...,
+	)
 }

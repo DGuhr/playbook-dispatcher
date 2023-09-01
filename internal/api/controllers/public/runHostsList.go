@@ -14,6 +14,12 @@ import (
 	identityMiddleware "github.com/redhatinsights/platform-go-middlewares/identity"
 )
 
+func (this *spiceDBControllers) ApiRunHostsList(ctx echo.Context, params ApiRunHostsListParams) error {
+	// TODO: impl
+
+	return nil
+}
+
 func (this *controllers) ApiRunHostsList(ctx echo.Context, params ApiRunHostsListParams) error {
 	identity := identityMiddleware.Get(ctx.Request().Context())
 
