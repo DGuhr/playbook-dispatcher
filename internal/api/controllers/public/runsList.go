@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"io"
 	"net/http"
 	"playbook-dispatcher/internal/api/instrumentation"
@@ -13,6 +12,8 @@ import (
 	dbModel "playbook-dispatcher/internal/common/model/db"
 	"playbook-dispatcher/internal/common/utils"
 	"strings"
+
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 
 	"github.com/labstack/echo/v4"
 	identityMiddleware "github.com/redhatinsights/platform-go-middlewares/identity"
@@ -63,7 +64,7 @@ func (this *spiceDBControllers) ApiRunsList(ctx echo.Context, params ApiRunsList
 				ObjectId:   identity.Identity.User.UserID,
 			},
 		},
-	}, nil)
+	})
 
 	if err != nil {
 		return err

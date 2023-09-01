@@ -3,10 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/authzed/authzed-go/v1"
-	"github.com/authzed/grpcutil"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"playbook-dispatcher/internal/api/connectors"
 	"playbook-dispatcher/internal/api/connectors/inventory"
@@ -22,6 +18,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/RedHatInsights/tenant-utils/pkg/tenantid"
 
 	oapiMiddleware "github.com/deepmap/oapi-codegen/pkg/middleware"
@@ -29,6 +30,7 @@ import (
 	echoPrometheus "github.com/globocom/echo-prometheus"
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/redhatinsights/platform-go-middlewares/identity"
 	"github.com/redhatinsights/platform-go-middlewares/request_id"
 	"github.com/spf13/viper"
@@ -140,8 +142,16 @@ func Start(
 	internal.POST("/v2/dispatch", privateController.ApiInternalV2RunsCreate)
 	internal.POST("/v2/cancel", privateController.ApiInternalV2RunsCancel)
 	internal.POST("/v2/connection_status", privateController.ApiInternalHighlevelConnectionStatus)
-
-	publicController := public.CreateController(db, cloudConnectorClient)
+	var publicController public.ServerInterfaceWrapper
+	if cfg.GetBool("spicedb.enabled") {
+		spiceDbClient, err := getSpiceDbClient(cfg)
+		if err != nil {
+			panic(err)
+		}
+		publicController = public.CreateSpiceDBController(spiceDbClient, db, cloudConnectorClient)
+	} else {
+		publicController = public.CreateController(db, cloudConnectorClient)
+	}
 	// TODO: Wire in spiceDBController in place of above public controller when the code is done
 	// publicController := public.CreateSpiceDBController(spiceDbClient, db, cloudConnectorClient)
 	public := server.Group("/api/playbook-dispatcher")
@@ -181,9 +191,10 @@ func Start(
 }
 
 func getSpiceDbClient(cfg *viper.Viper) (*authzed.Client, error) {
-	// TODO: wire up below to real viper properties and add viper config
-	endpoint := cfg.GetString("SPICEDB_URL")
-	presharedKey := cfg.GetString("SPICEDB_PSK")
+	endpoint := cfg.GetString("spicedb.url")
+	presharedKey := cfg.GetString("spicedb.psk")
+
+	log.Info(fmt.Sprintf("[SpiceDB Config] Endpoint: %s, PSK: %s", endpoint, presharedKey))
 
 	var opts []grpc.DialOption
 
