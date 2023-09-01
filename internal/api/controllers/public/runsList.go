@@ -1,7 +1,11 @@
 package public
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"io"
 	"net/http"
 	"playbook-dispatcher/internal/api/instrumentation"
 	"playbook-dispatcher/internal/api/middleware"
@@ -45,9 +49,114 @@ func mapFieldsToSql(field string) string {
 }
 
 func (this *spiceDBControllers) ApiRunsList(ctx echo.Context, params ApiRunsListParams) error {
-	// TODO: impl
+	var dbRuns []dbModel.Run
 
-	return nil
+	identity := identityMiddleware.Get(ctx.Request().Context())
+	db := this.database.WithContext(ctx.Request().Context())
+
+	authRuns, err := this.spiceDBClient.LookupResources(context.TODO(), &v1.LookupResourcesRequest{
+		ResourceObjectType: "dispatcher/run",
+		Permission:         "view",
+		Subject: &v1.SubjectReference{
+			Object: &v1.ObjectReference{
+				ObjectType: "user",
+				ObjectId:   identity.Identity.User.UserID,
+			},
+		},
+	}, nil)
+
+	if err != nil {
+		return err
+	}
+
+	ids := make([]string, 0)
+	for {
+		next, err := authRuns.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		ids = append(ids, next.GetResourceObjectId())
+	}
+
+	queryBuilder := db.Table("runs").Where("id IN ?", ids)
+
+	fields, err := parseFields(middleware.GetDeepObject(ctx, "fields"), "data", runFields, defaultRunFields)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if params.Filter != nil {
+		if params.Filter.Status != nil {
+			status := *params.Filter.Status
+			switch status {
+			case dbModel.RunStatusTimeout:
+				queryBuilder.Where("runs.status = 'timeout' OR runs.status = 'running' AND runs.created_at + runs.timeout * interval '1 second' <= NOW()")
+			case dbModel.RunStatusRunning:
+				queryBuilder.Where("runs.status = ?", status)
+				queryBuilder.Where("runs.created_at + runs.timeout * interval '1 second' > NOW()")
+			default:
+				queryBuilder.Where("runs.status = ?", status)
+			}
+		}
+
+		if params.Filter.Recipient != nil {
+			queryBuilder.Where("runs.recipient = ?", *params.Filter.Recipient)
+		}
+
+		if params.Filter.Service != nil {
+			queryBuilder.Where("runs.service = ?", *params.Filter.Service)
+		}
+	}
+
+	if labelFilters := middleware.GetDeepObject(ctx, "filter", "labels"); len(labelFilters) > 0 {
+		for key, values := range labelFilters {
+			for _, value := range values {
+				queryBuilder.Where("runs.labels ->> ? = ?", key, value)
+			}
+		}
+	}
+
+	var total int64
+	countResult := queryBuilder.Count(&total)
+
+	if countResult.Error != nil {
+		instrumentation.PlaybookRunReadError(ctx, countResult.Error)
+		return ctx.NoContent(http.StatusInternalServerError)
+	}
+
+	queryBuilder.Select(utils.MapStrings(fields, mapFieldsToSql))
+
+	queryBuilder.Order(getOrderBy(params))
+	queryBuilder.Order("id") // secondary criteria to guarantee stable sorting
+
+	queryBuilder.Limit(getLimit(params.Limit))
+	queryBuilder.Offset(getOffset(params.Offset))
+
+	dbResult := queryBuilder.Find(&dbRuns)
+
+	if dbResult.Error != nil {
+		instrumentation.PlaybookRunReadError(ctx, dbResult.Error)
+		return ctx.NoContent(http.StatusInternalServerError)
+	}
+
+	response := make([]Run, len(dbRuns))
+
+	for i, v := range dbRuns {
+		response[i] = *dbRuntoApiRun(&v, fields)
+	}
+
+	return ctx.JSON(http.StatusOK, &Runs{
+		Data: response,
+		Meta: Meta{
+			Count: len(response),
+			Total: int(total),
+		},
+		Links: createLinks("/api/playbook-dispatcher/v1/runs", middleware.GetQueryString(ctx), getLimit(params.Limit), getOffset(params.Offset), int(total)),
+	})
 }
 
 func (this *controllers) ApiRunsList(ctx echo.Context, params ApiRunsListParams) error {
