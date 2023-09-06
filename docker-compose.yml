@@ -79,6 +79,7 @@ services:
       DB_HOST: "db"
       PSK_AUTH_TEST: "xwKhCUzgJ8"
       PSK_AUTH_REMEDIATIONS: "remediations"
+      PSK_AUTH_CONFIGMANAGER: "configmanager"
       SPICEDB_ENABLED: "true"
       SPICEDB_URL: "spicedb:50051"
       SPICEDB_PSK: "foobar"

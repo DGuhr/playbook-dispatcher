@@ -49,8 +49,6 @@ func main() {
 		if evt.EventType == "create" {
 			fmt.Printf("New run %s for org %s for service %s against host %s\n", evt.Payload.ID, evt.Payload.OrgID, evt.Payload.Service, evt.Payload.Recipient)
 
-			root_workspace := evt.Payload.OrgID + "_root"
-
 			_, err = spiceDbClient.WriteRelationships(context.TODO(), &v1.WriteRelationshipsRequest{
 				Updates: []*v1.RelationshipUpdate{
 					{
@@ -60,11 +58,11 @@ func main() {
 								ObjectType: "dispatcher/run",
 								ObjectId:   evt.Payload.ID,
 							},
-							Relation: "workspace",
+							Relation: "host",
 							Subject: &v1.SubjectReference{
 								Object: &v1.ObjectReference{
-									ObjectType: "workspace",
-									ObjectId:   root_workspace,
+									ObjectType: "inventory/host",
+									ObjectId:   evt.Payload.Recipient,
 								},
 							},
 						},
@@ -81,22 +79,6 @@ func main() {
 								Object: &v1.ObjectReference{
 									ObjectType: "dispatcher/service",
 									ObjectId:   evt.Payload.Service,
-								},
-							},
-						},
-					},
-					{
-						Operation: v1.RelationshipUpdate_OPERATION_TOUCH,
-						Relationship: &v1.Relationship{
-							Resource: &v1.ObjectReference{
-								ObjectType: "dispatcher/host",
-								ObjectId:   evt.Payload.Recipient,
-							},
-							Relation: "run",
-							Subject: &v1.SubjectReference{
-								Object: &v1.ObjectReference{
-									ObjectType: "dispatcher/run",
-									ObjectId:   evt.Payload.ID,
 								},
 							},
 						},
