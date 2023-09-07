@@ -1,14 +1,14 @@
 [
     {
         "org_id": "aspian",
-        "recipient": "f33d0000-da04-4651-84d1-187fa5c23f6c",
+        "recipient": "da7afeed-da04-4651-84d1-187fa5c23f6c",
         "url": "http://example.com",
         "name":"ConfigManager playbook",
         "principal": "test-user"
     },
     {
         "org_id": "aspian",
-        "recipient": "0b5e7000-da04-4651-84d1-187fa5c23f6c",
+        "recipient": "41e12750-da04-4651-84d1-187fa5c23f6c",
         "url": "http://example.com",
         "name":"ConfigManager playbook",
         "principal": "test-user"

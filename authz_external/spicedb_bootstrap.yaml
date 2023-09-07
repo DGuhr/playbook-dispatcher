@@ -146,20 +146,13 @@ schema: |-
 
   definition inventory/host {
       relation workspace: workspace
-      relation group: inventory/host_group
 
       //synthetic relations to expose workspace permissions
       permission dispatcher_view_remediations = workspace->dispatcher_view_remediations
       permission dispatcher_view_configmanager = workspace->dispatcher_view_configmanager
       permission dispatcher_view_tasks = workspace->dispatcher_view_tasks
 
-      permission view = workspace->inventory_view_hosts + group->view // idea: "ungrouped" hosts land in an "ungrouped" group
-  }
-
-  definition inventory/host_group { //question: is this needed now? this allows a different dimension for assigning permissions, but do workspaces do the job of host groups better?
-      relation user_grant: role_binding
-
-      permission view = user_grant->inventory_view_hosts
+      permission view = workspace->inventory_view_hosts
   }
 
   definition dispatcher/run {
@@ -223,16 +216,15 @@ relationships: |-
   workspace:aspian_root#user_grant@role_binding:aspian_remediations_admins
 
   role_binding:aspian_telemetry_configmanager_admins#granted@role:configmanager_admin
-  role_binding:aspian_telemetry_configmanager_admins#subject@user:alex
+  role_binding:aspian_telemetry_configmanager_admins#subject@user:david
   role_binding:aspian_telemetry_configmanager_admins#subject@user:alice
   workspace:aspian/telemetry#user_grant@role_binding:aspian_telemetry_configmanager_admins
 
   role_binding:aspian_observability_configmanager_admins#granted@role:configmanager_admin
-  role_binding:aspian_observability_configmanager_admins#subject@user:anna
-  role_binding:aspian_observability_configmanager_admins#subject@user:aiden
+  role_binding:aspian_observability_configmanager_admins#subject@user:dani
   workspace:aspian/observability#user_grant@role_binding:aspian_observability_configmanager_admins
 
-  inventory/host:f33d0000-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/telemetry
-  inventory/host:0b5e7000-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/observability
+  inventory/host:da7afeed-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/telemetry
+  inventory/host:41e12750-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/observability
 assertions: null
 validation: {}
